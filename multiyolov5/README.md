@@ -6,8 +6,8 @@ This multi-task model adds only a small amount of computation and inferential GP
 test video:https://youtu.be/dLjktV2vsF0
 
 
-![Uploa![40](https://user-images.githubusercontent.com/98376235/156918090-a7ae252d-26b6-492d-bc9f-564786d2406d.png)
-![40](https://user-images.githubusercontent.com/98376235/156918091-84f7dc33-bbb5-4e13-98ef-ee64610acd3a.png)
-ding 44.png…]()![43](https://user-images.githubusercontent.com/98376235/156918093-12a8e307-00bc-47a8-8fda-ab94228e6a82.jpg)
-![43](https://user-images.githubusercontent.com/98376235/156918094-81454a51-4d27-48d4-8889-6f3087625994.jpg)
+![40](https://user-images.githubusercontent.com/98376235/156918119-2c03820b-1f7f-4459-a9cd-1e64c1779dc0.png)
+![43](https://user-images.githubusercontent.com/98376235/156918124-e3031fa8-bffc-42b1-b8b8-19b1608c3d41.jpg)
+
+![44](https://user-images.githubusercontent.com/98376235/156918126-fc43cdfc-1bed-49fd-8a43-817c05d7c7c2.png)
 
