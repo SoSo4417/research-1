@@ -130,7 +130,7 @@ New segmentation CE loss with aux (currently using this), segmentation Focal los
 
 utils/metrics.py
 
-Added fitness2 function for train when selecting models, including P, R, AP@.5, AP@.5:.95和mIoU的比例. Added mIoU function to calculate mIoU.
+Added fitness2 function for train when selecting models, including P, R, AP@.5, AP@.5:.95 and mIoU. Added new function to calculate mIoU.
 
 
 detect.py
