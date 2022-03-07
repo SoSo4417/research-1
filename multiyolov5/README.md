@@ -49,14 +49,19 @@ There are several images in data/images from the cityscapes test set, bdd100k, a
 The result images are in the runs/detect folder, which can also be inferred and displayed at the same time.
 
 $ python detect.py --weights . /pspv5s.pt or other models --source data/images --conf 0.25 --img-size 1024 --view-img  
+
 Same as the original YOLOV5, --weights writes your pt file, --source writes the path to the image folder or video file, --conf detects the threshold, --img-size is the target long side size of the resize to model
 
 (b) same size continuous frame image to make video
+
 $ python detect.py --weights . /pspv5s.pt or other models --source image folder --conf 0.25 --img-size 1024 --save-as-video  
+
 I only wrote the same size images to create video support (for example, Cityscapes provides three continuous frame test images, bilibili's demo video is these images), put your images into the same folder, note that if there are different size images then the result video will fail to save, if you open --no-save video save the image will not draw the result (do not open)
 
 (c) Submit test set results to Cityscapes
+
 $ python detect.py --weights . /pspv5s.pt or other model --source image folder --conf 0.25 --img-size 1024 --submit --no-save  
+
 If you turn on --no-save and don't save the results, it will be much faster and save space. Combine the images of the 6 folders of the test set in one folder for inference, and you will find a results folder in the runs/detect/this exp, which is the result of converting trainid to id, compress it and upload it to the official website.
 You can also reason about the 6 folders separately, and the results will be compressed and uploaded
 
@@ -92,35 +97,54 @@ Gradient accumulation
 The learning rate and the detection segmentation loss ratio (the latter is not exposed in train.py) are a very important set of parameters. It must be clear that YOLOV5 uses gradient accumulation, regardless of your batchsize, the "nominal batchsize" is the author's preset of 64. This means that when you set the batchsize to 16, the parameters will only be updated every 4 batches (see how many times they accumulate for details). This means that when you set the batchsize to 16, the parameters will only be updated every 4 batches (see the accumulate I printed during training, the first time is the target value, the next time is the current value), i.e. the actual batchsize is the closest multiple of 64 to the batchsize you entered (here I modified the original code to strictly not exceed 64). So your input batchsize 17 (actual 51) is much smaller than 16 (actual 64), and you should take this into account when adjusting the learning rate. The current parameter is set to 18 on an 11G graphics card. Weakly modify the batchsize to observe the change of loss during warmup, and consider reducing the learning rate before accumulate to reach the target value of large oscillations.
 
 common.py
+
 This code is the common basic operation class in YOLOV5, in which I added ARM, FFM, RFB1, 2 of BiSeNet (non-RFBNet, see code comments for the magic modified version), ASPP (interface to increase the parameters used to cut the channel), ASPPs (first use 1 * 1 to reduce the input channel so that you can cut some intermediate channels less), Attention (channel attention, equivalent to ARM without 3×3 convolution, base SE), DAPPM (see HIT paper, the effect is not obvious here), PyramidPooling (PSPNet)
 
+
 yolo.py
+
 The main architecture code of the model for yolov5, including the Model class and the Detect class to be used for detection, I put the four newly added split header classes in this code (it might be more refreshing to put it in common.py). All newly added modules to be put into the model must go through the Model class, the following parts please focus on.
 (1) Model's initialization function, I manually added 24 layers in save (split layer number, detection is 25). The original code forward_onece uses a for loop forward reasoning, the results of the subsequent layers will be used to save in the list (which layers will be used by parse function to parse the yaml configuration file to get, in the initialization function called parse, need to save the intermediate layer number in the save list, forward when the corresponding layer intermediate results in accordance with the save sequence number The results are stored in the y list), the current method, because I manually added 24 layers, the detection layer will return x (detection results) and y [-2] (segmentation results) after the end of the run. Therefore, if you modify the configuration file to add a new layer (for example, to the latest P6 model to add a segmentation layer), be sure to modify the initialization function of the Model to change 24 to the new segmentation layer number (this is not a good interface, rush, and do not change 24 to -2, see the original yolo code to know that this change does not work). In addition yolov5 original author in many code default detection layer is the last layer, must be in the configuration of the detection layer in the last layer.
 (2) Model's parse_model parsing function from the yaml file parsing configuration, if you want to add a new module first in common.py or yolo.py in the implementation of the class, in parse_model in the parse method of writing the class, and then write the configuration in the configuration file. If you are designing a new split header after my split header class interface, just implement the class and add the class name to the list of support for parsing split headers in parse_model.
 
+
 models/yolov5s_city_seg.yaml
+
 model configuration file, you can see that I added the segmentation layer configuration in front of the detection layer and added the segmentation category (cityscapes is 19). Reasoning about different head pre-training models do not need to be modified, want to train different head models need to comment and uncomment (psp, base and lab do not need to change train.py again but bise also comment and uncomment train.py two places to add aux loss, the follow-up will explain the interface design flaws, but for the time being no time to change, in fact, with psp, base, lab is enough. s, m, l model reference to the original, the difference is only in the control of depth and width of depth_multiple, width_multiple values (base, psp and lab split head will also be automatically scaled down with s, m, l).
 
+
 data/cityscapes_det.yaml
+
 Test dataset configuration, same as the original version, with new segmented dataset address, train.py reads the segmented data address as configured here
 
+
 test.py
+
 New segmentation test function
 
+
 utils/loss.py
+
 New segmentation CE loss with aux (currently using this), segmentation Focal loss (more adequate experiments show that the effect is not good, at least 1 point lower), OHEM (theoretically should be better than CE, the actual lower than a few points, and the learning rate and loss ratio has a certain relationship, the gradient accumulation mechanism also seems to be a bit buggy), in short, most of the cases are recommended to use CE, the category is extremely unbalanced when then consider ohem and focal loss.
 
+
 utils/metrics.py
+
 Added fitness2 function for train when selecting models, including P, R, AP@.5, AP@.5:.95和mIoU的比例. Added mIoU function to calculate mIoU.
 
+
 detect.py
+
 Added functions for drawing segmentation and superposition maps, saving videos with the same size map, and converting trainid to id for submission (see inference section above), modified the case of opening cudnn.benchmark
 
+
 SegmentationDataset.py
+
 Segmentation data processing class. The original code is from the pytorch-ecoding project,, adding colorjittor, adding resize long-edge non-uniform sampling, modifying the crop method, modifying the way of testval mode, abolishing the val mode (much faster than testval mode, but the measured value is not accurate accuracy. The problem is that it is not very efficient to handle complicated loading, and the CPU and disk requirements are high (very slow on colab and kaggle). Training process may be stuck for a period of time or only test a child process, the program did not die, wait a short time on the good, belong to the normal phenomenon of bugs. Training other segmentation data such as BDD100k need to follow cityscapes inheritance base class (Cityscapes and bdd100k hybrid class has been implemented, as well as the example with custom_data class), especially the label conversion part, pay attention to the pad pixel for 255 and ordinary ignore category when loaded together with the conversion to -1, some Some dataset ids need to be converted to trainid (the current custom_data class is for data with no id conversion and ignore tag of 255, same as bdd100k).
 
+
 train.py
+
 The training process is to run a set of detection data backward for each batch, and then run a set of segmentation data backward, and then accumulate the unified update parameters. Every 10 rounds to measure the accuracy of the segmentation, the last 40 rounds of each round to measure the segmentation of the time to update best.pt. (The reason for this is because the loaders of testval mode is a bit of a problem leading to the death of some sub-processes, measuring the segmentation is very slow, my machine more than 1 minute). In addition, there is no support for multi-card training, temporarily can not use multiple cards.
 The time relationship between ohem and CE interface is not consistent, the loop in the CE interface aux different number of inputs to find the loss is not consistent, replace the segmentation head training with aux loss when you want to annotate the annotation train.py these two places (marked with a long ----- comment).
 
