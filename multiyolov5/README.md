@@ -32,6 +32,7 @@ $ python 2yolo_filter.py
 $ mkdir detdata
 $ mv . /images . /detdata
 $ mv . /labels . /detdata
+
 Version 2.0 prepares 4 pre-trained models for splitting Head. From the visualization point of view, we recommend psp and lab (the feeling field is bigger), there is no big difference in speed, base is the fastest, psp is the second, lab and bise are close.
 Recommended index: Lab and PSP > Base and BiSe
 base.pt base version of the segmentation head. 16 layers (PAN1/8) input, profile channel 512. C3, channel slightly widened version of C3SPP, dropout (0.1), 1 × 1 convolution to the category. Speed accuracy integrated effect is good, but SPP with 1/8 figure feeling field is actually not large enough, s model is good enough, but m model deepening and widening after the amount of improvement is not satisfactory.
